@@ -427,3 +427,47 @@ class DataBase:
             return chat_id_data[0]
 
         return None
+
+
+
+
+    def check_is_admin(self, chat_id: int):
+        """
+        Chat ID orqali admin ekanligini tekshirish
+        """
+        sql = """
+        SELECT u.chat_id 
+        FROM bot_app_setadmin sa 
+        JOIN bot_app_user u ON sa.user_id = u.id 
+        WHERE u.chat_id = ?
+        """
+        result = self.execute(sql, (chat_id,), fetchone=True)
+        return bool(result)
+
+    def get_battle_by_id(self, battle_id: int):
+        sql = "SELECT * FROM bot_app_battle WHERE id = ?"
+        return self.execute(sql, (battle_id,), fetchone=True)
+
+    def add_quiz_participant(self, unique_id: str, user_id: int, user_name: str):
+        """
+        Qatnashchini bazaga qo'shish
+        """
+        sql = "INSERT INTO bot_app_quizparticipant (unique_id, user_id, user_name, is_active, created_at) VALUES (?, ?, ?, ?, ?)"
+        self.execute(sql, (unique_id, user_id, user_name, True, datetime.now()), commit=True)
+
+    def get_quiz_participants(self, unique_id: str):
+        """
+        Test qatnashchilarini olish
+        """
+        sql = "SELECT * FROM bot_app_quizparticipant WHERE unique_id = ? AND is_active = ?"
+        return self.execute(sql, (unique_id, True), fetchall=True)
+
+    def get_quiz_by_unique_id(self, unique_id: str):
+        """
+        History jadvalidan unique_id bo'yicha quiz ma'lumotlarini olish
+        """
+        sql = "SELECT quiz_id, quiz_number, quiz_time, unique_id, user_id, created_at FROM bot_app_history WHERE unique_id = ?"
+        return self.execute(sql, (unique_id,), fetchone=True)
+
+
+

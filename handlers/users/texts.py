@@ -1,7 +1,7 @@
 WELCOME_TEXT = "Xush kelibsiz / Добро пожаловать!"
 CHOOSE_LANG = " Assalomu alaykum,\n O'zingiz uchun qulay bo'lgan tilni tanlang: / Выберите язык!"
-BTN_LANG_UZ = "O'zbek tili"
-BTN_LANG_RU = "Русский язык"
+BTN_LANG_UZ = "🇺🇿 O'zbekcha" # "O'zbek tili"
+BTN_LANG_RU = "🇷🇺 Русский"   # "Русский язык"
 
 
 

@@ -1,81 +1,45 @@
-
+#/category.py
 from aiogram import types
 from aiogram.dispatcher import FSMContext
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from handlers.users.texts import TEXT_ALL
-from loader import db, dp
-from states.userStates import UserStates
 
-# Constants
+from handlers.users.texts import TEXT_ALL
+from services.keyboard_service import KeyboardService
+from services.category_service import CategoryService
+from loader import dp
+from utils.logging_utils import logger
+
+keyboard_service = KeyboardService()
+category_service = CategoryService()
 BOOKS_TEXT = ['📚 Kitoblar', '📚Книги']
 BATTLE_TEXT = ['⚔️ Bellashuv', '⚔️ Соревнование']
-# admin_user_ids = {624301767, 1161180912,}
-
 
 @dp.message_handler(text=BOOKS_TEXT)
 async def handle_product_request(message: types.Message, state: FSMContext):
-
     user_id = message.from_user.id
-    lang_id = db.get_user_language_id(user_id)
-    top_level_categories = db.get_root_categories()
+    lang_id = await category_service.get_user_language(user_id)
+    categories = await category_service.get_root_categories()
 
-    if lang_id == 1:
-
-        keyboard_product = InlineKeyboardMarkup()
-        for category in top_level_categories:
-            category_name = category[1]
-            keyboard_product.add(InlineKeyboardButton(text=category_name, callback_data=f"category_{category[0]}"))
-
-        await message.answer(text=TEXT_ALL[lang_id], reply_markup=keyboard_product)
-    else:
-        keyboard_product = InlineKeyboardMarkup()
-        for category in top_level_categories:
-            category_name = category[2]
-            keyboard_product.add(InlineKeyboardButton(text=category_name, callback_data=f"category_{category[0]}"))
-
-        # Send the keyboard to the user
-        await message.answer(text=TEXT_ALL[lang_id], reply_markup=keyboard_product)
-
-# admin_user_ids = [624301767]
-async def is_user_admin(user_id: int) -> bool:
-    user_ids = db.get_all_setadmin_user_ids()
-    admin_ids = []
-
-    for id in user_ids:
-        admin_id = db.get_chat_id_by_user_id(id)
-        admin_ids.append(admin_id)
-
-
-    return user_id in admin_ids
-
+    keyboard = await keyboard_service.create_keyboard(categories, lang_id, "category")
+    await message.answer(text=TEXT_ALL[lang_id], reply_markup=keyboard)
 
 
 @dp.message_handler(text=BATTLE_TEXT)
-async def handle_product_request(message: types.Message, state: FSMContext):
-    user_id = message.from_user.id
-    lang_id = db.get_user_language_id(user_id)
-    top_level_categories = db.get_root_battle()
+async def handle_battle_request(message: types.Message, state: FSMContext):
+    try:
+        user_id = message.from_user.id
+        lang_id = await category_service.get_user_language(user_id)
+        battles = await category_service.get_root_battles()
 
-    if lang_id == 1:
-        keyboard_product = InlineKeyboardMarkup()
-        for category in top_level_categories:
-            category_name = category[1]
-            keyboard_product.add(InlineKeyboardButton(text=category_name, callback_data=f"battle_{category[0]}_{category_name}"))
+        # Admin ekanligini tekshirish
+        is_admin = await category_service.is_admin(user_id)
+        logger.info(f"User {user_id} is admin: {is_admin}")
 
-        # Agar foydalanuvchi admin bo'lsa, test o'tkazish tugmasini qo'shish
-        if await is_user_admin(user_id):
-            keyboard_product.add(InlineKeyboardButton(text="Test o'tkazish", callback_data="start_quiz"))
-
-        await message.answer(text=TEXT_ALL[lang_id], reply_markup=keyboard_product)
-    else:
-        keyboard_product = InlineKeyboardMarkup()
-        for category in top_level_categories:
-            category_name = category[2]
-            keyboard_product.add(InlineKeyboardButton(text=category_name, callback_data=f"battle_{category[0]}"))
-
-        # Agar foydalanuvchi admin bo'lsa, test o'tkazish tugmasini qo'shish
-        if await is_user_admin(user_id):
-            keyboard_product.add(InlineKeyboardButton(text="Пройти тест", callback_data="start_quiz"))
-
-        await message.answer(text=TEXT_ALL[lang_id], reply_markup=keyboard_product)
-
+        keyboard = await keyboard_service.create_keyboard(
+            battles,
+            lang_id,
+            "battle",
+            is_admin=is_admin  # Admin parametrini uzatamiz
+        )
+        await message.answer(text=TEXT_ALL[lang_id], reply_markup=keyboard)
+    except Exception as e:
+        logger.error(f"Battle request error: {e}")
