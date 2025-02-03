@@ -138,3 +138,17 @@ class SetBio(models.Model):
 
     class Meta:
         verbose_name_plural = 'Set about'
+
+#
+class QuizParticipant(models.Model):
+   unique_id = models.CharField(max_length=150)  # Test unique ID
+   user_id = models.BigIntegerField()  # Foydalanuvchi chat_id
+   user_name = models.CharField(max_length=150)  # Foydalanuvchi ismi
+   created_at = models.DateTimeField(auto_now_add=True)
+   is_active = models.BooleanField(default=True)
+
+   def __str__(self):
+       return f"{self.user_name} - {self.unique_id}"
+
+   class Meta:
+       verbose_name_plural = 'Quiz Participants'
