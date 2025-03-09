@@ -1,4 +1,5 @@
 # handlers/users/quiz_handlers.py faylining to'liq versiyasi
+import asyncio
 
 from aiogram import types
 from aiogram.dispatcher import FSMContext
@@ -157,6 +158,12 @@ async def start_quiz_for_all(callback: CallbackQuery, state: FSMContext):
         unique_id = callback.data.split('_')[-1]
         logger.info(f"Starting quiz for unique_id: {unique_id}")
 
+        # Active quizzes ni quiz_service orqali tekshiramiz
+        active_quiz = await quiz_service.get_active_quiz(unique_id)
+        if active_quiz and active_quiz.get('started', False):
+            await callback.message.answer("Test allaqachon boshlangan!")
+            return
+
         participants = await quiz_service.get_quiz_participants(unique_id)
         quiz_data = await quiz_service.get_quiz_questions(unique_id)
 
@@ -164,13 +171,23 @@ async def start_quiz_for_all(callback: CallbackQuery, state: FSMContext):
             await callback.message.answer("Hozircha qatnashchilar yo'q")
             return
 
-        # Faqat bir marta "Test boshlandi" xabarini yuborish
+        # Quiz ni active qilish
+        await quiz_service.set_quiz_started(unique_id)
+
         await callback.message.edit_text("Test boshlandi! ✅")
 
+        # Har bir qatnashchiga test yuborish
+        send_tasks = []
         for participant in participants:
             user_id = participant[2]  # chat_id
-            await bot.send_message(user_id, "Test boshlandi! Omad! 🎯")
-            await quiz_service.start_quiz_for_user(user_id, quiz_data)
+            send_tasks.append(
+                bot.send_message(user_id, "Test boshlandi! Omad! 🎯")
+            )
+            send_tasks.append(
+                quiz_service.start_quiz_for_user(user_id, quiz_data)
+            )
+
+        await asyncio.gather(*send_tasks)
 
     except Exception as e:
         logger.error(f"Error starting quiz for all: {e}", exc_info=True)
@@ -287,3 +304,34 @@ async def process_quiz_time(message: types.Message, state: FSMContext):
     except Exception as e:
         logger.error(f"Error processing quiz time: {e}")
         await message.answer("Xatolik yuz berdi")
+
+
+@dp.callback_query_handler(lambda c: c.data.startswith('personal_result_'))
+async def show_personal_results(callback: types.CallbackQuery, state: FSMContext):
+    try:
+        user_name = callback.data.split('_')[2]
+        data = await state.get_data()
+
+        detailed_results = await quiz_service.get_detailed_results(
+            user_name,
+            data.get('answers', []),
+            data.get('questions', [])
+        )
+
+        await callback.message.edit_text(detailed_results)
+
+    except Exception as e:
+        logger.error(f"Error showing personal results: {e}")
+
+
+@dp.callback_query_handler(lambda c: c.data == "group_results")
+async def show_group_results(callback: types.CallbackQuery, state: FSMContext):
+    try:
+        data = await state.get_data()
+        unique_id = data.get('unique_id')
+
+        group_results = await quiz_service.get_group_results(unique_id)
+        await callback.message.edit_text(group_results)
+
+    except Exception as e:
+        logger.error(f"Error showing group results: {e}")

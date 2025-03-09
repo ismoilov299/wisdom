@@ -469,5 +469,18 @@ class DataBase:
         sql = "SELECT quiz_id, quiz_number, quiz_time, unique_id, user_id, created_at FROM bot_app_history WHERE unique_id = ?"
         return self.execute(sql, (unique_id,), fetchone=True)
 
+    def get_quiz_results(self, unique_id: str):
+        """Test natijalarini olish"""
+        try:
+            query = """
+            SELECT user_name, true_answers, false_answers 
+            FROM quiz_results 
+            WHERE unique_id = ?
+            """
+            return self.execute(query, (unique_id,), fetchall=True)
+        except Exception as e:
+            logger.error(f"Error getting quiz results: {e}")
+            return []
+
 
 
