@@ -9,7 +9,6 @@ from services.keyboard_service import KeyboardService
 from utils.logging_utils import logger
 
 from services.quiz_service import QuizService
-# from handlers.quiz_handlers import start_quiz_battle
 
 quiz_service = QuizService()
 
